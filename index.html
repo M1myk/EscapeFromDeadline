@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Escape Room: Release Day</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Ekran startowy -->
+      <section id="screen-start" class="screen active">
+        <div class="panel panel-center">
+          <h1>Escape Room: <span>Release Day</span></h1>
+          <p class="subtitle">
+            Ucieknij z biura przed deadlinem release’u, wykorzystując wiedzę o
+            <strong>Scrum</strong> i <strong>inżynierii oprogramowania</strong>.
+          </p>
+          <div class="start-form">
+            <label>
+              Nazwa zespołu:
+              <input type="text" id="team-name" placeholder="np. Agile Ninjas" />
+            </label>
+            <label>
+              Tryb:
+              <select id="mode-select">
+                <option value="solo">Solo</option>
+                <option value="versus">Rywalizacja (na czas / punkty)</option>
+                <option value="multiplayer">Multiplayer (2 drużyny online)</option>
+              </select>
+            </label>
+          </div>
+          <div class="start-actions">
+            <button id="btn-start" class="btn primary">Start</button>
+            <button id="btn-ranking" class="btn secondary">Ranking</button>
+          </div>
+          <p class="hint">
+            Gra uczy: role Scrum, artefakty, ceremonie oraz myślenie iteracyjne.
+          </p>
+        </div>
+      </section>
+
+      <!-- HUD gry -->
+      <header id="hud" class="hidden">
+        <div class="hud-group">
+          <span class="hud-label">Zespół:</span>
+          <span id="hud-team" class="hud-value">—</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">Sprint:</span>
+          <span id="hud-sprint" class="hud-value">1</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">Czas do release'u:</span>
+          <span id="hud-timer" class="hud-value">10:00</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">Punkty:</span>
+          <span id="hud-score" class="hud-value">0</span>
+        </div>
+        <!-- Multiplayer HUD -->
+        <div id="hud-multiplayer" class="hud-multiplayer hidden">
+          <div class="hud-vs">VS</div>
+          <div class="hud-opponent">
+            <span class="hud-label">Przeciwnik:</span>
+            <span id="hud-opponent-name" class="hud-value">—</span>
+            <span class="hud-label">Punkty:</span>
+            <span id="hud-opponent-score" class="hud-value">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Ekran gry / pokoje -->
+      <section id="screen-game" class="screen">
+        <!-- Pokój 1: Sprint Backlog -->
+        <div id="room-backlog" class="room active">
+          <div class="panel panel-wide">
+            <h2>Pokój 1: Ułóż Sprint Backlog</h2>
+            <p class="room-desc">
+              Jest dzień planowania sprintu. Z Product Backlogu musisz wybrać
+              właściwe elementy do Sprint Backlogu, biorąc pod uwagę priorytet i
+              pojemność zespołu.
+            </p>
+
+            <div class="columns">
+              <div class="column">
+                <h3>Product Backlog</h3>
+                <ul id="product-backlog" class="card-list">
+                  <!-- Wypełniane z JS -->
+                </ul>
+              </div>
+              <div class="column">
+                <h3>Sprint Backlog (max 20 story points)</h3>
+                <ul
+                  id="sprint-backlog"
+                  class="card-list droppable"
+                  data-max-points="20"
+                ></ul>
+                <div class="points-info">
+                  Story points: <span id="current-points">0</span> / 20
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-box">
+              <h4>Wiedza: Artefakty Scrum</h4>
+              <ul>
+                <li><strong>Product Backlog</strong> – uporządkowana lista tego, co może być potrzebne w produkcie.</li>
+                <li><strong>Sprint Backlog</strong> – wybrane elementy na dany Sprint + plan ich realizacji.</li>
+                <li><strong>Increment</strong> – gotowy, potencjalnie wdrażalny fragment produktu.</li>
+              </ul>
+            </div>
+
+            <button id="btn-validate-backlog" class="btn primary">
+              Zatwierdź Sprint Backlog
+            </button>
+            <p id="feedback-backlog" class="feedback"></p>
+          </div>
+        </div>
+
+        <!-- Pokój 2: Dopasuj User Stories -->
+        <div id="room-stories" class="room">
+          <div class="panel panel-wide">
+            <h2>Pokój 2: Dopasuj User Stories do Sprintu</h2>
+            <p class="room-desc">
+              Masz listę User Stories i cele Sprintu. Dopasuj, które historie
+              wspierają obecny <strong>Sprint Goal</strong>, a które powinny
+              zostać na później.
+            </p>
+
+            <div class="sprint-goal-box">
+              <h3>Cel Sprintu</h3>
+              <p id="sprint-goal-text">
+                „Użytkownik może bezpiecznie logować się i resetować hasło.”
+              </p>
+            </div>
+
+            <div class="columns columns-stories">
+              <div class="column">
+                <h3>User Stories</h3>
+                <ul id="stories-pool" class="card-list">
+                  <!-- z JS -->
+                </ul>
+              </div>
+              <div class="column">
+                <h3>Do tego Sprintu</h3>
+                <ul
+                  id="stories-sprint"
+                  class="card-list droppable"
+                  data-type="match-goal"
+                ></ul>
+              </div>
+              <div class="column">
+                <h3>Poza Sprintem</h3>
+                <ul
+                  id="stories-later"
+                  class="card-list droppable"
+                  data-type="later"
+                ></ul>
+              </div>
+            </div>
+
+            <div class="edu-box">
+              <h4>Wiedza: User Story i Cel Sprintu</h4>
+              <p>
+                Dobrze zdefiniowany <strong>Cel Sprintu</strong> pomaga zespołowi
+                skupić się na tym, co najważniejsze. User Stories powinny
+                wnosić wartość bezpośrednio powiązaną z tym celem.
+              </p>
+            </div>
+
+            <button id="btn-validate-stories" class="btn primary">
+              Sprawdź dopasowanie
+            </button>
+            <p id="feedback-stories" class="feedback"></p>
+          </div>
+        </div>
+
+        <!-- Pokój 3: Konflikt PO–Dev -->
+        <div id="room-conflict" class="room">
+          <div class="panel panel-wide">
+            <h2>Pokój 3: Rozwiąż konflikt PO–Dev</h2>
+            <p class="room-desc">
+              Release za chwilę, a część funkcji jest nieukończona. Product Owner
+              naciska, żeby „wrzucić wszystko”, zespół deweloperski boi się
+              jakości. Wybierz takie działania, które są spójne ze Scrumem.
+            </p>
+
+            <div class="dialogue">
+              <div class="bubble po">
+                <strong>PO:</strong> „Musimy dowieźć cały zakres, inaczej biznes
+                będzie niezadowolony!”
+              </div>
+              <div class="bubble dev">
+                <strong>Dev:</strong> „Część rzeczy nie przeszła testów. Release
+                może być ryzykowny.”
+              </div>
+            </div>
+
+            <div class="choices">
+              <button class="choice-btn" data-choice="all">
+                Wypchnąć wszystko, nawet nieprzetestowane
+              </button>
+              <button class="choice-btn" data-choice="increment">
+                Wydać tylko ukończony, przetestowany Increment
+              </button>
+              <button class="choice-btn" data-choice="delay">
+                Przesunąć release o tydzień, aby dokończyć cały zakres
+              </button>
+              <button class="choice-btn" data-choice="hide">
+                Ukryć problemy, licząc że „jakoś to będzie”
+              </button>
+            </div>
+
+            <div class="edu-box">
+              <h4>Wiedza: Role Scrum & odpowiedzialność</h4>
+              <ul>
+                <li><strong>Product Owner</strong> – maksymalizuje wartość produktu, decyduje o priorytetach.</li>
+                <li><strong>Developers</strong> – odpowiedzialni za jakość i techniczne aspekty Inkrementu.</li>
+                <li><strong>Scrum Master</strong> – dba o zrozumienie i stosowanie Scruma.</li>
+              </ul>
+            </div>
+
+            <p id="feedback-conflict" class="feedback"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ekran końcowy -->
+      <section id="screen-end" class="screen">
+        <div class="panel panel-center">
+          <h2 id="end-title">Gratulacje!</h2>
+          <p id="end-summary"></p>
+          <div class="score-box">
+            <p><strong>Zespół:</strong> <span id="end-team">—</span></p>
+            <p><strong>Punkty:</strong> <span id="end-score">0</span></p>
+            <p>
+              <strong>Czas:</strong>
+              <span id="end-time">00:00</span>
+            </p>
+            <div id="end-waiting-opponent" class="waiting-opponent hidden">
+              <p class="waiting-text">⏳ Czekasz na zakończenie gry przez przeciwnika...</p>
+            </div>
+            <div id="end-multiplayer-result" class="multiplayer-result hidden">
+              <p><strong>Przeciwnik:</strong> <span id="end-opponent-name">—</span></p>
+              <p><strong>Punkty przeciwnika:</strong> <span id="end-opponent-score">0</span></p>
+              <p><strong>Czas przeciwnika:</strong> <span id="end-opponent-time">00:00</span></p>
+              <p id="end-winner" class="winner-text"></p>
+            </div>
+          </div>
+
+          <div class="edu-box">
+            <h4>Co wyniosłeś z gry?</h4>
+            <ul>
+              <li>Rozpoznawanie i budowanie Sprint Backlogu.</li>
+              <li>Dopasowywanie User Stories do celu Sprintu.</li>
+              <li>Rozwiązywanie konfliktów w duchu Scruma.</li>
+              <li>Świadomość ról, artefaktów i ceremonii Scrum.</li>
+            </ul>
+          </div>
+
+          <div class="end-actions">
+            <button id="btn-restart" class="btn secondary">
+              Zagraj ponownie
+            </button>
+            <button id="btn-ranking-from-end" class="btn secondary">
+              Zobacz ranking
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ekran rankingu -->
+      <section id="screen-ranking" class="screen">
+        <div class="panel panel-wide">
+          <h2>Ranking Zespołów</h2>
+          <p class="subtitle">Najlepsze wyniki w Escape Room: Release Day</p>
+          
+          <div class="ranking-controls">
+            <label>
+              Sortuj według:
+              <select id="ranking-sort">
+                <option value="score">Punkty (malejąco)</option>
+                <option value="time">Czas (rosnąco)</option>
+                <option value="date">Data (najnowsze)</option>
+              </select>
+            </label>
+            <button id="btn-back-from-ranking" class="btn secondary">Powrót</button>
+          </div>
+
+          <div class="ranking-table-container">
+            <table class="ranking-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Zespół</th>
+                  <th>Punkty</th>
+                  <th>Czas</th>
+                  <th>Data</th>
+                  <th>Tryb</th>
+                </tr>
+              </thead>
+              <tbody id="ranking-tbody">
+                <!-- Wypełniane z JS -->
+              </tbody>
+            </table>
+            <p id="ranking-empty" class="ranking-empty hidden">Brak wyników. Zagraj, aby pojawić się w rankingu!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ekran multiplayer (tworzenie/dołączanie) -->
+      <section id="screen-multiplayer" class="screen">
+        <div class="panel panel-center">
+          <h2>Multiplayer: Rywalizacja Online</h2>
+          <p class="subtitle">Graj jednocześnie z inną drużyną i wygraj zdobywając więcej punktów!</p>
+          
+          <div id="multiplayer-status" class="multiplayer-status">
+            <p id="multiplayer-status-text">Łączenie z serwerem...</p>
+          </div>
+
+          <div id="multiplayer-create" class="multiplayer-section">
+            <h3>Utwórz pokój</h3>
+            <label>
+              Nazwa zespołu:
+              <input type="text" id="mp-team-name" placeholder="np. Agile Ninjas" />
+            </label>
+            <button id="btn-create-room" class="btn primary">Utwórz pokój</button>
+            <p id="mp-room-id-display" class="room-id-display hidden">
+              ID pokoju: <strong id="mp-room-id"></strong>
+              <button id="btn-copy-room-id" class="btn-link">Kopiuj</button>
+            </p>
+          </div>
+
+          <div id="multiplayer-join" class="multiplayer-section">
+            <h3>Dołącz do pokoju</h3>
+            <label>
+              Nazwa zespołu:
+              <input type="text" id="mp-join-team-name" placeholder="np. Scrum Masters" />
+            </label>
+            <label>
+              ID pokoju:
+              <input type="text" id="mp-join-room-id" placeholder="Wklej ID pokoju" />
+            </label>
+            <button id="btn-join-room" class="btn primary">Dołącz</button>
+          </div>
+
+          <div id="multiplayer-waiting" class="multiplayer-section hidden">
+            <h3>Oczekiwanie na przeciwnika...</h3>
+            <p>Pokój: <strong id="mp-waiting-room-id"></strong></p>
+            <p>Twój zespół: <strong id="mp-waiting-team-name"></strong></p>
+            <div class="loading-spinner"></div>
+          </div>
+
+          <div id="multiplayer-ready" class="multiplayer-section hidden">
+            <h3>Oba zespoły gotowe!</h3>
+            <p>Przeciwnik: <strong id="mp-ready-opponent"></strong></p>
+            <button id="btn-start-multiplayer" class="btn primary">Rozpocznij grę</button>
+          </div>
+
+          <button id="btn-back-from-multiplayer" class="btn secondary">Powrót</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>
+
+

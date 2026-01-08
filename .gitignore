@@ -1,0 +1,21 @@
+# Zależności
+node_modules/
+package-lock.json
+
+# Zmienne środowiskowe (zawierają hasła!)
+.env
+
+# Logi
+*.log
+npm-debug.log*
+
+# Systemowe pliki
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
