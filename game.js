@@ -271,6 +271,12 @@ function bindStartScreen() {
     state.startTimestamp = Date.now();
     state.finished = false;
 
+    // Wyłącz stary timer jeśli wciąż działa
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+
     if (state.mode === "multiplayer") {
       // Przejdź do ekranu multiplayer
       $("#screen-start").classList.remove("active");
@@ -291,7 +297,13 @@ function bindStartScreen() {
 
     state.sprint = 0;
     state.quizAnswers = {};
+    state.backlogItems = [];
+    state.stories = [];
+    state.tests = [];
     buildQuiz();
+    buildBacklog();
+    buildStories();
+    buildTests();
     goToRoom("quiz");
     updateProgressBar();
     startTimer();
@@ -362,8 +374,7 @@ function showWaitingForOpponent() {
   );
 
   endTitle.textContent = "Ukończyłeś grę!";
-  endSummary.textContent =
-    "Czekasz na zakończenie gry przez przeciwnika...";
+  endSummary.textContent = "Czekasz na zakończenie gry przez przeciwnika...";
 
   $("#end-multiplayer-result").classList.add("hidden");
   $("#end-waiting-opponent").classList.remove("hidden");
@@ -444,12 +455,14 @@ function showMultiplayerResult(result) {
     endWinner.textContent = "🏆 Wygrałeś!";
     endWinner.style.color = "#4ade80";
     endTitle.textContent = "Gratulacje! Wygrałeś!";
-    endSummary.textContent = "Twój zespół pokonał przeciwnika w Escape Room: Release Day!";
+    endSummary.textContent =
+      "Twój zespół pokonał przeciwnika w Escape Room: Release Day!";
   } else {
     endWinner.textContent = "Przegrałeś. Spróbuj ponownie!";
     endWinner.style.color = "#fb7185";
     endTitle.textContent = "Przegrana";
-    endSummary.textContent = "Przeciwnik zdobył więcej punktów lub ukończył szybciej. Spróbuj ponownie!";
+    endSummary.textContent =
+      "Przeciwnik zdobył więcej punktów lub ukończył szybciej. Spróbuj ponownie!";
   }
 
   // Usuń poprzedni powód jeśli istnieje
@@ -476,28 +489,38 @@ function showMultiplayerResult(result) {
 function buildQuiz() {
   const quizContainer = $("#quiz-container");
   if (!quizContainer) return;
-  
+
   quizContainer.innerHTML = "";
-  
+
   QUIZ_QUESTIONS.forEach((question, index) => {
     const questionDiv = document.createElement("div");
     questionDiv.className = "quiz-question";
     questionDiv.dataset.questionId = question.id;
-    
-    let optionsHtml = question.options.map((option) => `
+
+    let optionsHtml = question.options
+      .map(
+        (option) => `
       <label class="quiz-option">
-        <input type="radio" name="quiz-${question.id}" value="${option.id}" data-correct="${option.correct}">
-        <span class="option-text">${option.id.toUpperCase()}) ${option.text}</span>
+        <input type="radio" name="quiz-${question.id}" value="${
+          option.id
+        }" data-correct="${option.correct}">
+        <span class="option-text">${option.id.toUpperCase()}) ${
+          option.text
+        }</span>
       </label>
-    `).join("");
-    
+    `
+      )
+      .join("");
+
     questionDiv.innerHTML = `
-      <h3 class="quiz-question-title">Pytanie ${index + 1}: ${question.question}</h3>
+      <h3 class="quiz-question-title">Pytanie ${index + 1}: ${
+      question.question
+    }</h3>
       <div class="quiz-options">
         ${optionsHtml}
       </div>
     `;
-    
+
     quizContainer.appendChild(questionDiv);
   });
 }
@@ -506,19 +529,21 @@ function bindQuizLogic() {
   const btnValidate = $("#btn-validate-quiz");
   if (!btnValidate) return;
   const feedback = $("#feedback-quiz");
-  
+
   btnValidate.addEventListener("click", () => {
     let correct = 0;
     let total = QUIZ_QUESTIONS.length;
     let allAnswered = true;
-    
+
     QUIZ_QUESTIONS.forEach((question) => {
-      const selected = document.querySelector(`input[name="quiz-${question.id}"]:checked`);
+      const selected = document.querySelector(
+        `input[name="quiz-${question.id}"]:checked`
+      );
       if (!selected) {
         allAnswered = false;
         return;
       }
-      
+
       const isCorrect = selected.dataset.correct === "true";
       if (isCorrect) {
         correct++;
@@ -526,22 +551,26 @@ function bindQuizLogic() {
       } else {
         selected.closest(".quiz-option").classList.add("wrong");
         // Pokaż poprawną odpowiedź
-        const correctOption = document.querySelector(`input[name="quiz-${question.id}"][data-correct="true"]`);
+        const correctOption = document.querySelector(
+          `input[name="quiz-${question.id}"][data-correct="true"]`
+        );
         if (correctOption) {
           correctOption.closest(".quiz-option").classList.add("correct-answer");
         }
       }
     });
-    
+
     if (!allAnswered) {
-      feedback.textContent = "Odpowiedz na wszystkie pytania przed zatwierdzeniem.";
+      feedback.textContent =
+        "Odpowiedz na wszystkie pytania przed zatwierdzeniem.";
       feedback.className = "feedback error";
       animateError(feedback);
       return;
     }
-    
+
     if (correct === total) {
-      feedback.textContent = "Doskonale! Wszystkie odpowiedzi są poprawne. Możesz przejść dalej.";
+      feedback.textContent =
+        "Doskonale! Wszystkie odpowiedzi są poprawne. Możesz przejść dalej.";
       feedback.className = "feedback ok";
       state.score += 15;
       updateScoreDisplay();
@@ -555,14 +584,18 @@ function bindQuizLogic() {
       state.score += correct * 3; // 3 punkty za każde poprawne
       updateScoreDisplay();
       animateError(feedback);
-      
+
       // Reset po 3 sekundach
       setTimeout(() => {
         QUIZ_QUESTIONS.forEach((question) => {
-          const options = document.querySelectorAll(`input[name="quiz-${question.id}"]`);
+          const options = document.querySelectorAll(
+            `input[name="quiz-${question.id}"]`
+          );
           options.forEach((option) => {
             option.checked = false;
-            option.closest(".quiz-option").classList.remove("correct", "wrong", "correct-answer");
+            option
+              .closest(".quiz-option")
+              .classList.remove("correct", "wrong", "correct-answer");
           });
         });
         feedback.textContent = "";
@@ -726,7 +759,7 @@ function buildTests() {
   state.tests = TESTS.map((t) => ({ ...t }));
   const testsPool = $("#tests-pool");
   if (!testsPool) return;
-  
+
   testsPool.innerHTML = "";
 
   state.tests.forEach((test) => {
@@ -736,10 +769,20 @@ function buildTests() {
     li.dataset.id = test.id;
     li.dataset.storyId = test.storyId;
     li.dataset.type = test.type;
-    
-    const typeLabel = test.type === "unit" ? "Unit" : test.type === "integration" ? "Integration" : "E2E";
-    const typeColor = test.type === "unit" ? "#22c55e" : test.type === "integration" ? "#3b82f6" : "#a855f7";
-    
+
+    const typeLabel =
+      test.type === "unit"
+        ? "Unit"
+        : test.type === "integration"
+        ? "Integration"
+        : "E2E";
+    const typeColor =
+      test.type === "unit"
+        ? "#22c55e"
+        : test.type === "integration"
+        ? "#3b82f6"
+        : "#a855f7";
+
     li.innerHTML = `
       <div class="card-title">${test.text}</div>
       <div class="card-meta">
@@ -765,10 +808,12 @@ function bindTestsLogic() {
     storyTestPairs.forEach((pair) => {
       const storyId = pair.dataset.storyId;
       const testCards = Array.from(pair.querySelectorAll(".test-card"));
-      
+
       if (testCards.length > 0) {
         total++;
-        const isCorrect = testCards.some((card) => card.dataset.storyId === storyId);
+        const isCorrect = testCards.some(
+          (card) => card.dataset.storyId === storyId
+        );
         if (isCorrect) {
           correct++;
           pair.classList.add("correct-pair");
@@ -781,7 +826,7 @@ function bindTestsLogic() {
     // Sprawdź czy wszystkie testy są przypisane
     const testsPool = $("#tests-pool");
     const unassignedTests = testsPool.querySelectorAll(".test-card");
-    
+
     if (unassignedTests.length > 0) {
       feedback.textContent = `Nie wszystkie testy zostały przypisane. Przypisz testy do odpowiednich User Stories.`;
       feedback.className = "feedback error";
@@ -797,7 +842,8 @@ function bindTestsLogic() {
     });
 
     if (!allHaveTests) {
-      feedback.textContent = "Każda User Story w Sprintcie powinna mieć przypisane testy.";
+      feedback.textContent =
+        "Każda User Story w Sprintcie powinna mieć przypisane testy.";
       feedback.className = "feedback error";
       state.score -= 3;
       updateScoreDisplay();
@@ -806,7 +852,8 @@ function bindTestsLogic() {
     }
 
     if (correct === total && total > 0) {
-      feedback.textContent = "Doskonale! Wszystkie testy są poprawnie przypisane do odpowiednich User Stories.";
+      feedback.textContent =
+        "Doskonale! Wszystkie testy są poprawnie przypisane do odpowiednich User Stories.";
       feedback.className = "feedback ok";
       state.score += 20;
       updateScoreDisplay();
@@ -862,7 +909,10 @@ function bindConflictRoom() {
         feedback.className = "feedback error";
         state.score += 5;
         updateScoreDisplay();
-        endGame(true, "Udało się dowieźć release, ale z opóźnieniem – warto lepiej planować Sprinty.");
+        endGame(
+          true,
+          "Udało się dowieźć release, ale z opóźnieniem – warto lepiej planować Sprinty."
+        );
       } else {
         btn.classList.add("wrong");
         feedback.textContent =
@@ -875,11 +925,36 @@ function bindConflictRoom() {
   });
 }
 
-// Drag & Drop dla backlogu, stories i testów
+// Drag & Drop dla backlogu, stories i testów (Desktop + Mobile)
+let touchState = {
+  dragging: null,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+function disableTouchScroll() {
+  document.body.style.overscrollBehavior = "none";
+  document.addEventListener("touchmove", preventScroll, { passive: false });
+}
+
+function enableTouchScroll() {
+  document.body.style.overscrollBehavior = "auto";
+  document.removeEventListener("touchmove", preventScroll);
+}
+
+function preventScroll(e) {
+  if (touchState.dragging) {
+    e.preventDefault();
+  }
+}
+
 function initDragAndDrop() {
   const cards = document.querySelectorAll(".card");
-  const droppables = document.querySelectorAll(".droppable, #product-backlog, #stories-pool, #tests-pool, .test-list");
+  const droppables = document.querySelectorAll(
+    ".droppable, #product-backlog, #stories-pool, #tests-pool, .test-list"
+  );
 
+  // Desktop: Drag & Drop API
   cards.forEach((card) => {
     card.addEventListener("dragstart", () => {
       card.classList.add("dragging");
@@ -888,8 +963,108 @@ function initDragAndDrop() {
       card.classList.remove("dragging");
       updateSprintPoints();
     });
+
+    // Mobile: Touch Events
+    card.addEventListener("touchstart", (e) => {
+      touchState.dragging = card;
+      touchState.offsetX =
+        e.touches[0].clientX - card.getBoundingClientRect().left;
+      touchState.offsetY =
+        e.touches[0].clientY - card.getBoundingClientRect().top;
+      card.classList.add("dragging");
+      card.style.zIndex = "10000";
+      disableTouchScroll();
+    });
+
+    card.addEventListener("touchmove", (e) => {
+      if (!touchState.dragging) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const rect = card.getBoundingClientRect();
+      card.style.position = "fixed";
+      card.style.top = touch.clientY - touchState.offsetY + "px";
+      card.style.left = touch.clientX - touchState.offsetX + "px";
+
+      // Sprawdź, czy jesteśmy nad dropzone
+      droppables.forEach((zone) => {
+        const zoneRect = zone.getBoundingClientRect();
+        const isOver =
+          touch.clientX >= zoneRect.left &&
+          touch.clientX <= zoneRect.right &&
+          touch.clientY >= zoneRect.top &&
+          touch.clientY <= zoneRect.bottom;
+
+        if (isOver) {
+          zone.classList.add("drag-over");
+        } else {
+          zone.classList.remove("drag-over");
+        }
+      });
+    });
+
+    card.addEventListener("touchend", (e) => {
+      if (!touchState.dragging) return;
+
+      const touch = e.changedTouches[0];
+      let dropped = false;
+
+      // Sprawdź, nad jaką strefą skończy się dotyk
+      droppables.forEach((zone) => {
+        const zoneRect = zone.getBoundingClientRect();
+        const isOver =
+          touch.clientX >= zoneRect.left &&
+          touch.clientX <= zoneRect.right &&
+          touch.clientY >= zoneRect.top &&
+          touch.clientY <= zoneRect.bottom;
+
+        if (isOver && !dropped) {
+          zone.classList.remove("drag-over");
+
+          // Dla testów - sprawdź czy test pasuje do story
+          if (
+            touchState.dragging.classList.contains("test-card") &&
+            zone.classList.contains("test-list")
+          ) {
+            const testStoryId = touchState.dragging.dataset.storyId;
+            const targetStoryId = zone.dataset.storyId;
+
+            if (testStoryId === targetStoryId) {
+              // Prawidłowe przypisanie - dodaj wizualną informację
+              touchState.dragging.classList.add("correct-match");
+              setTimeout(() => {
+                touchState.dragging.classList.remove("correct-match");
+              }, 1000);
+            }
+          }
+
+          // Przenieś kartę
+          card.style.position = "relative";
+          card.style.top = "auto";
+          card.style.left = "auto";
+          zone.appendChild(touchState.dragging);
+          dropped = true;
+          updateSprintPoints();
+        }
+      });
+
+      // Jeśli nie porzucono nad strefą, przywróć pozycję
+      if (!dropped) {
+        card.style.position = "relative";
+        card.style.top = "auto";
+        card.style.left = "auto";
+      }
+
+      // Wyczyść stan
+      card.classList.remove("dragging");
+      card.style.zIndex = "auto";
+      droppables.forEach((zone) => zone.classList.remove("drag-over"));
+      touchState.dragging = null;
+      enableTouchScroll();
+    });
   });
 
+  // Desktop: Drop zones
   droppables.forEach((zone) => {
     zone.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -905,10 +1080,13 @@ function initDragAndDrop() {
       zone.classList.remove("drag-over");
 
       // Dla testów - sprawdź czy test pasuje do story
-      if (dragging.classList.contains("test-card") && zone.classList.contains("test-list")) {
+      if (
+        dragging.classList.contains("test-card") &&
+        zone.classList.contains("test-list")
+      ) {
         const testStoryId = dragging.dataset.storyId;
         const targetStoryId = zone.dataset.storyId;
-        
+
         if (testStoryId === targetStoryId) {
           // Prawidłowe przypisanie - dodaj wizualną informację
           dragging.classList.add("correct-match");
@@ -963,22 +1141,22 @@ function updateTestsRoom() {
 
   storiesContainer.innerHTML = "";
   const sprintStories = Array.from(storiesSprint.querySelectorAll(".card"));
-  
+
   sprintStories.forEach((storyCard) => {
     const storyId = storyCard.dataset.id;
     const storyText = storyCard.querySelector(".card-title")?.textContent || "";
-    
+
     const pairDiv = document.createElement("div");
     pairDiv.className = "story-test-pair";
     pairDiv.dataset.storyId = storyId;
-    
+
     pairDiv.innerHTML = `
       <div class="story-card-in-test">
         <div class="card-title">${storyText}</div>
       </div>
       <ul class="test-list droppable" data-story-id="${storyId}"></ul>
     `;
-    
+
     storiesContainer.appendChild(pairDiv);
   });
 
@@ -1003,11 +1181,11 @@ function animateError(element) {
 function updateProgressBar() {
   const progressBar = $("#progress-bar");
   if (!progressBar) return;
-  
+
   const totalRooms = 5;
   const currentRoom = state.sprint;
   const progress = ((currentRoom + 1) / totalRooms) * 100;
-  
+
   progressBar.style.width = `${progress}%`;
 }
 
@@ -1015,12 +1193,21 @@ function updateProgressBar() {
 function bindRestart() {
   const btnRestart = $("#btn-restart");
   btnRestart.addEventListener("click", () => {
+    // Wyłącz stary timer jeśli wciąż działa
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+
     // Reset stanu
     state.score = 0;
     state.sprint = 0;
     state.timerSeconds = 10 * 60;
     state.finished = false;
     state.quizAnswers = {};
+    state.backlogItems = [];
+    state.stories = [];
+    state.tests = [];
 
     $("#hud-score").textContent = "0";
     $("#hud-sprint").textContent = "1";
@@ -1029,13 +1216,28 @@ function bindRestart() {
     $("#screen-end").classList.remove("active");
     $("#screen-start").classList.add("active");
 
-    // Opróżnij listy i zbuduj na nowo
+    // Opróżnij wszystkie kontenery (zarówno źródłowe jak i docelowe)
     if ($("#quiz-container")) {
       $("#quiz-container").innerHTML = "";
     }
-    $("#sprint-backlog").innerHTML = "";
-    $("#stories-sprint").innerHTML = "";
-    $("#stories-later").innerHTML = "";
+    if ($("#product-backlog")) {
+      $("#product-backlog").innerHTML = "";
+    }
+    if ($("#sprint-backlog")) {
+      $("#sprint-backlog").innerHTML = "";
+    }
+    if ($("#stories-pool")) {
+      $("#stories-pool").innerHTML = "";
+    }
+    if ($("#stories-sprint")) {
+      $("#stories-sprint").innerHTML = "";
+    }
+    if ($("#stories-later")) {
+      $("#stories-later").innerHTML = "";
+    }
+    if ($("#tests-pool")) {
+      $("#tests-pool").innerHTML = "";
+    }
     if ($("#tests-stories-container")) {
       $("#tests-stories-container").innerHTML = "";
     }
@@ -1064,6 +1266,7 @@ function bindRestart() {
 // Ranking - zapisywanie i wyświetlanie (MySQL przez API)
 async function saveScore(teamName, score, time, mode) {
   try {
+    console.log(" Wysyłam wynik:", { teamName, score, time, mode });
     const response = await fetch("/api/scores", {
       method: "POST",
       headers: {
@@ -1077,15 +1280,19 @@ async function saveScore(teamName, score, time, mode) {
       }),
     });
 
+    console.log(
+      `📊 Odpowiedź serwera: status ${response.status}, ok=${response.ok}`
+    );
+
     if (!response.ok) {
-      console.error("Błąd zapisywania wyniku:", response.statusText);
+      console.error("❌ Błąd zapisywania wyniku:", response.statusText);
       // Fallback do localStorage jeśli API nie działa
       saveScoreLocalStorage(teamName, score, time, mode);
       return;
     }
 
     const result = await response.json();
-    console.log("Wynik zapisany:", result);
+    console.log("✅ Wynik zapisany:", result);
   } catch (error) {
     console.error("Błąd zapisywania wyniku:", error);
     // Fallback do localStorage jeśli API nie działa
@@ -1096,7 +1303,7 @@ async function saveScore(teamName, score, time, mode) {
 async function getScores(sortBy = "score") {
   try {
     const response = await fetch(`/api/scores?sort=${sortBy}`);
-    
+
     if (!response.ok) {
       console.error("Błąd pobierania wyników:", response.statusText);
       // Fallback do localStorage
@@ -1166,7 +1373,8 @@ async function showRanking() {
   const emptyMsg = $("#ranking-empty");
 
   // Pokaż wskaźnik ładowania
-  tbody.innerHTML = "<tr><td colspan='6' style='text-align: center; padding: 20px;'>Ładowanie wyników...</td></tr>";
+  tbody.innerHTML =
+    "<tr><td colspan='6' style='text-align: center; padding: 20px;'>Ładowanie wyników...</td></tr>";
 
   try {
     const scores = await getScores(sortBy);
@@ -1191,7 +1399,11 @@ async function showRanking() {
         minute: "2-digit",
       });
       const modeLabel =
-        entry.mode === "multiplayer" ? "Multiplayer" : entry.mode === "versus" ? "Versus" : "Solo";
+        entry.mode === "multiplayer"
+          ? "Multiplayer"
+          : entry.mode === "versus"
+          ? "Versus"
+          : "Solo";
 
       tr.innerHTML = `
         <td>${index + 1}</td>
@@ -1205,7 +1417,8 @@ async function showRanking() {
     });
   } catch (error) {
     console.error("Błąd wyświetlania rankingu:", error);
-    tbody.innerHTML = "<tr><td colspan='6' style='text-align: center; padding: 20px; color: #fb7185;'>Błąd ładowania wyników</td></tr>";
+    tbody.innerHTML =
+      "<tr><td colspan='6' style='text-align: center; padding: 20px; color: #fb7185;'>Błąd ładowania wyników</td></tr>";
   }
 }
 
@@ -1232,7 +1445,7 @@ function initMultiplayer() {
     // Użyj aktualnego hosta i portu
     const socketUrl = window.location.origin;
     console.log("Łączenie z Socket.io:", socketUrl);
-    
+
     state.socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -1241,7 +1454,7 @@ function initMultiplayer() {
       timeout: 20000,
       forceNew: false,
     });
-    
+
     setupSocketListeners();
   } catch (e) {
     console.error("Błąd inicjalizacji Socket.io:", e);
@@ -1421,14 +1634,32 @@ function startMultiplayerGame() {
   state.sprint = 0;
   state.timerSeconds = 10 * 60;
   state.quizAnswers = {};
+  state.backlogItems = [];
+  state.stories = [];
+  state.tests = [];
 
-  // Reset pokoi
+  // Reset pokoi - czyszczenie wszystkich kontenerów
   if ($("#quiz-container")) {
     $("#quiz-container").innerHTML = "";
   }
-  $("#sprint-backlog").innerHTML = "";
-  $("#stories-sprint").innerHTML = "";
-  $("#stories-later").innerHTML = "";
+  if ($("#product-backlog")) {
+    $("#product-backlog").innerHTML = "";
+  }
+  if ($("#sprint-backlog")) {
+    $("#sprint-backlog").innerHTML = "";
+  }
+  if ($("#stories-pool")) {
+    $("#stories-pool").innerHTML = "";
+  }
+  if ($("#stories-sprint")) {
+    $("#stories-sprint").innerHTML = "";
+  }
+  if ($("#stories-later")) {
+    $("#stories-later").innerHTML = "";
+  }
+  if ($("#tests-pool")) {
+    $("#tests-pool").innerHTML = "";
+  }
   if ($("#tests-stories-container")) {
     $("#tests-stories-container").innerHTML = "";
   }
@@ -1436,7 +1667,7 @@ function startMultiplayerGame() {
   buildBacklog();
   buildStories();
   buildTests();
-  
+
   // Upewnij się, że jesteśmy w pokoju 0 (quiz)
   goToRoom("quiz");
   updateProgressBar();
@@ -1444,5 +1675,25 @@ function startMultiplayerGame() {
   startTimer();
 }
 
+// Obsługa touch na mobilu - zapobiega domyślnym zachowaniom
+if ("ontouchstart" in window) {
+  // Wyłącz podwójny tap zoom na przyciskach i input polach
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      if (
+        e.target.tagName === "BUTTON" ||
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "SELECT" ||
+        e.target.classList.contains("quiz-option") ||
+        e.target.classList.contains("card")
+      ) {
+        e.preventDefault();
+        e.target.click?.();
+      }
+    },
+    false
+  );
+}
 
 document.addEventListener("DOMContentLoaded", init);

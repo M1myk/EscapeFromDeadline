@@ -14,15 +14,35 @@ const server = http.createServer(app);
 app.use(express.json());
 
 // Konfiguracja połączenia z MySQL
+// Конфігурація під Railway
 const dbConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "escape_room_game",
+  host: process.env.MYSQLHOST || "127.0.0.1",
+  user: process.env.MYSQLUSER || "root",
+  password: process.env.MYSQLPASSWORD || "",
+  database: process.env.MYSQLDATABASE || "escape_room_game",
+  port: parseInt(process.env.MYSQLPORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 };
+
+// Konfiguracja bez bazy danych (do inicjalizacji)
+const dbConfigNoDB = {
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+};
+
+// Jeśli DB_SOCKET jest ustawiony (np. dla MAMP), użyj socket'a zamiast TCP
+if (process.env.DB_SOCKET) {
+  dbConfig.socketPath = process.env.DB_SOCKET;
+  delete dbConfig.host; // Usuń host gdy używamy socket'a
+  dbConfigNoDB.socketPath = process.env.DB_SOCKET;
+  delete dbConfigNoDB.host;
+}
 
 // Utwórz pulę połączeń
 const pool = mysql.createPool(dbConfig);
@@ -34,8 +54,9 @@ let dbReady = false;
 async function initDatabase() {
   try {
     const connection = await pool.getConnection();
+    console.log("✅ Połączono z bazą danych MySQL");
 
-    // Utwórz tabelę jeśli nie istnieje
+    // Tworzymy tylko tabelę (baza już została utworzona w interfejsie Railway)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS scores (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -44,19 +65,16 @@ async function initDatabase() {
         time_seconds INT NOT NULL,
         mode VARCHAR(50) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_score (score DESC),
-        INDEX idx_time (time_seconds ASC),
-        INDEX idx_created (created_at DESC)
+        INDEX idx_score (score DESC)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
     connection.release();
     dbReady = true;
-    console.log("✓ Baza danych zainicjalizowana");
+    console.log("✓ Tablica wyników gotowa");
   } catch (error) {
-    console.error("⚠️ Baza danych niedostępna - gra będzie działać bez rankingu:", error.message);
+    console.error("Połączenie z bazą danych nie powiodło się:", error.message);
     dbReady = false;
-    // Nie przerywaj działania serwera
   }
 }
 
@@ -88,35 +106,51 @@ app.post("/api/scores", async (req, res) => {
     const { teamName, score, time, mode } = req.body;
 
     if (!teamName || score === undefined || time === undefined || !mode) {
+      console.error("Brakuje wymaganych pól:", { teamName, score, time, mode });
       return res.status(400).json({ error: "Brakuje wymaganych pól" });
     }
+
+    console.log(
+      `POST /api/scores - zapisuję: ${teamName}, ${score} pkt, ${time}s, ${mode}`
+    );
 
     // Jeśli baza danych nie jest dostępna, zwróć sukces (dane zostaną zapisane gdy DB będzie gotowa)
     if (!dbReady) {
       console.log("DB niedostępna - wynik nie został zapisany w bazie");
-      return res.json({
+      return res.status(200).json({
         success: true,
         id: null,
         message: "Wynik przesłany (baza niedostępna, ranking niedostępny)",
       });
     }
 
-    const [result] = await pool.query(
-      "INSERT INTO scores (team_name, score, time_seconds, mode) VALUES (?, ?, ?, ?)",
-      [teamName, score, time, mode]
-    );
+    try {
+      const [result] = await pool.query(
+        "INSERT INTO scores (team_name, score, time_seconds, mode) VALUES (?, ?, ?, ?)",
+        [teamName, score, time, mode]
+      );
 
-    res.json({
-      success: true,
-      id: result.insertId,
-      message: "Wynik zapisany",
-    });
+      console.log(`✅ Wynik zapisany w bazie - ID: ${result.insertId}`);
+      return res.status(201).json({
+        success: true,
+        id: result.insertId,
+        message: "Wynik zapisany",
+      });
+    } catch (dbError) {
+      console.error("❌ Błąd bazy danych:", dbError.message);
+      // Zwróć success=true aby nie przerywać gry
+      return res.status(200).json({
+        success: true,
+        id: null,
+        message: "Wynik przesłany (błąd bazy danych)",
+      });
+    }
   } catch (error) {
-    console.error("Błąd zapisywania wyniku:", error);
-    res.json({
+    console.error("❌ Błąd ogólny /api/scores:", error.message);
+    return res.status(200).json({
       success: true,
       id: null,
-      message: "Wynik przesłany (błąd bazy danych, ranking niedostępny)",
+      message: "Wynik przesłany (błąd serwera)",
     });
   }
 });
@@ -125,7 +159,7 @@ app.post("/api/scores", async (req, res) => {
 app.get("/api/scores", async (req, res) => {
   try {
     if (!dbReady) {
-      return res.json({
+      return res.status(200).json({
         success: true,
         scores: [],
         message: "Ranking niedostępny - baza danych nie jest połączona",
@@ -158,10 +192,10 @@ app.get("/api/scores", async (req, res) => {
       date: row.created_at.toISOString(),
     }));
 
-    res.json({ success: true, scores });
+    return res.status(200).json({ success: true, scores });
   } catch (error) {
     console.error("Błąd pobierania wyników:", error);
-    res.json({
+    return res.status(200).json({
       success: true,
       scores: [],
       message: "Ranking niedostępny - błąd bazy danych",
@@ -448,6 +482,7 @@ function generateRoomId() {
   return result;
 }
 
+// Znajdź lokalny IP adres do wypisania
 // Znajdź lokalny IP adres
 function getLocalIp() {
   const nets = os.networkInterfaces();
@@ -464,7 +499,6 @@ function getLocalIp() {
 const isRender = !!process.env.RENDER;
 const localIp = isRender ? "localhost" : getLocalIp();
 
-// Bind na konkretnym IP zamiast 0.0.0.0 (lepiej na macOS)
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
