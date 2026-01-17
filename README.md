@@ -117,3 +117,4 @@ Prosta gra webowa ucząca podstaw Scrum / Agile przez mechanikę „escape roomu
 - ✅ **Edukacyjne treści** o rolach, artefaktach i ceremoniach Scrum
 
 
+# EscapeFromDeadline
