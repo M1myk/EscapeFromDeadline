@@ -18,6 +18,7 @@
     <div id="app">
       <!-- Ekran startowy -->
       <section id="screen-start" class="screen active">
+        
         <div class="panel panel-center">
           <h1>Escape Room: <span>Release Day</span></h1>
           <p class="subtitle">
@@ -33,17 +34,16 @@
                 placeholder="np. Agile Ninjas"
               />
             </label>
-            <label>
-              Tryb:
-              <select id="mode-select">
-                <option value="solo">Solo</option>
+               <label for="mode">Tryb:</label>
+              <select name="mode" id="mode-select">
+                <option value="solo" selected>Solo</option>
                 <option value="versus">Rywalizacja (na czas / punkty)</option>
                 <option value="multiplayer">
                   Multiplayer (2 drużyny online)
                 </option>
               </select>
-            </label>
           </div>
+          
           <div class="start-actions">
             <button id="btn-start" class="btn primary">Start</button>
             <button id="btn-ranking" class="btn secondary">Ranking</button>
@@ -253,12 +253,10 @@
               </div>
               <div class="column column-stories-tests">
                 <h3>User Stories w Sprintcie</h3>
-                <div
-                  id="tests-stories-container"
-                  class="stories-tests-container"
-                >
-                  <!-- z JS -->
+                <div id="tests-stories-container" class="stories-tests-container droppable     answer-block" data-story-id="story-1">
+                <!-- JS вставляє відповідні User Stories -->
                 </div>
+
               </div>
             </div>
 

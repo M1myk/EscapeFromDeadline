@@ -370,7 +370,7 @@ function showWaitingForOpponent() {
   endTeam.textContent = state.teamName;
   endScore.textContent = state.score.toString();
   endTime.textContent = formatTime(
-    10 * 60 - state.timerSeconds >= 0 ? 10 * 60 - state.timerSeconds : 0
+    10 * 60 - state.timerSeconds >= 0 ? 10 * 60 - state.timerSeconds : 0,
   );
 
   endTitle.textContent = "Ukończyłeś grę!";
@@ -508,14 +508,14 @@ function buildQuiz() {
           option.text
         }</span>
       </label>
-    `
+    `,
       )
       .join("");
 
     questionDiv.innerHTML = `
       <h3 class="quiz-question-title">Pytanie ${index + 1}: ${
-      question.question
-    }</h3>
+        question.question
+      }</h3>
       <div class="quiz-options">
         ${optionsHtml}
       </div>
@@ -530,6 +530,24 @@ function bindQuizLogic() {
   if (!btnValidate) return;
   const feedback = $("#feedback-quiz");
 
+  // Dodaj visual feedback przy zmiane radio button
+  const radioButtons = document.querySelectorAll("input[type='radio']");
+  radioButtons.forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      // Usuń highlight z poprzedniej odpowiedzi
+      const parent = e.target.closest(".quiz-option");
+      if (parent) {
+        parent
+          .closest(".quiz-options")
+          .querySelectorAll(".quiz-option")
+          .forEach((opt) => {
+            opt.classList.remove("selected");
+          });
+        parent.classList.add("selected");
+      }
+    });
+  });
+
   btnValidate.addEventListener("click", () => {
     let correct = 0;
     let total = QUIZ_QUESTIONS.length;
@@ -537,7 +555,7 @@ function bindQuizLogic() {
 
     QUIZ_QUESTIONS.forEach((question) => {
       const selected = document.querySelector(
-        `input[name="quiz-${question.id}"]:checked`
+        `input[name="quiz-${question.id}"]:checked`,
       );
       if (!selected) {
         allAnswered = false;
@@ -552,7 +570,7 @@ function bindQuizLogic() {
         selected.closest(".quiz-option").classList.add("wrong");
         // Pokaż poprawną odpowiedź
         const correctOption = document.querySelector(
-          `input[name="quiz-${question.id}"][data-correct="true"]`
+          `input[name="quiz-${question.id}"][data-correct="true"]`,
         );
         if (correctOption) {
           correctOption.closest(".quiz-option").classList.add("correct-answer");
@@ -589,7 +607,7 @@ function bindQuizLogic() {
       setTimeout(() => {
         QUIZ_QUESTIONS.forEach((question) => {
           const options = document.querySelectorAll(
-            `input[name="quiz-${question.id}"]`
+            `input[name="quiz-${question.id}"]`,
           );
           options.forEach((option) => {
             option.checked = false;
@@ -774,14 +792,14 @@ function buildTests() {
       test.type === "unit"
         ? "Unit"
         : test.type === "integration"
-        ? "Integration"
-        : "E2E";
+          ? "Integration"
+          : "E2E";
     const typeColor =
       test.type === "unit"
         ? "#22c55e"
         : test.type === "integration"
-        ? "#3b82f6"
-        : "#a855f7";
+          ? "#3b82f6"
+          : "#a855f7";
 
     li.innerHTML = `
       <div class="card-title">${test.text}</div>
@@ -812,7 +830,7 @@ function bindTestsLogic() {
       if (testCards.length > 0) {
         total++;
         const isCorrect = testCards.some(
-          (card) => card.dataset.storyId === storyId
+          (card) => card.dataset.storyId === storyId,
         );
         if (isCorrect) {
           correct++;
@@ -909,10 +927,7 @@ function bindConflictRoom() {
         feedback.className = "feedback error";
         state.score += 5;
         updateScoreDisplay();
-        endGame(
-          true,
-          "Udało się dowieźć release, ale z opóźnieniem – warto lepiej planować Sprinty."
-        );
+        endGame(true, "Udało się dowieźć release!");
       } else {
         btn.classList.add("wrong");
         feedback.textContent =
@@ -949,159 +964,159 @@ function preventScroll(e) {
 }
 
 function initDragAndDrop() {
+  // Elementy, które mogą być przenoszone
   const cards = document.querySelectorAll(".card");
-  const droppables = document.querySelectorAll(
-    ".droppable, #product-backlog, #stories-pool, #tests-pool, .test-list"
+  // Desktopowe strefy drop (zostawiam też je dla desktopu)
+  const desktopDroppables = document.querySelectorAll(
+    ".droppable, #product-backlog, #stories-pool, #tests-pool, .test-list, .answer-block"
   );
 
-  // Desktop: Drag & Drop API
-  cards.forEach((card) => {
-    card.addEventListener("dragstart", () => {
-      card.classList.add("dragging");
-    });
-    card.addEventListener("dragend", () => {
-      card.classList.remove("dragging");
-      updateSprintPoints();
-    });
+  // Pomocnik: zwraca najbliższą strefę drop pod danym punktem
+  function getDropZoneFromPoint(x, y) {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    return el.closest(".droppable, #product-backlog, #stories-pool, #tests-pool, .test-list, .answer-block");
+  }
 
-    // Mobile: Touch Events
-    card.addEventListener("touchstart", (e) => {
-      touchState.dragging = card;
-      touchState.offsetX =
-        e.touches[0].clientX - card.getBoundingClientRect().left;
-      touchState.offsetY =
-        e.touches[0].clientY - card.getBoundingClientRect().top;
-      card.classList.add("dragging");
-      card.style.zIndex = "10000";
-      disableTouchScroll();
-    });
-
-    card.addEventListener("touchmove", (e) => {
-      if (!touchState.dragging) return;
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const rect = card.getBoundingClientRect();
-      card.style.position = "fixed";
-      card.style.top = touch.clientY - touchState.offsetY + "px";
-      card.style.left = touch.clientX - touchState.offsetX + "px";
-
-      // Sprawdź, czy jesteśmy nad dropzone
-      droppables.forEach((zone) => {
-        const zoneRect = zone.getBoundingClientRect();
-        const isOver =
-          touch.clientX >= zoneRect.left &&
-          touch.clientX <= zoneRect.right &&
-          touch.clientY >= zoneRect.top &&
-          touch.clientY <= zoneRect.bottom;
-
-        if (isOver) {
-          zone.classList.add("drag-over");
-        } else {
-          zone.classList.remove("drag-over");
-        }
-      });
-    });
-
-    card.addEventListener("touchend", (e) => {
-      if (!touchState.dragging) return;
-
-      const touch = e.changedTouches[0];
-      let dropped = false;
-
-      // Sprawdź, nad jaką strefą skończy się dotyk
-      droppables.forEach((zone) => {
-        const zoneRect = zone.getBoundingClientRect();
-        const isOver =
-          touch.clientX >= zoneRect.left &&
-          touch.clientX <= zoneRect.right &&
-          touch.clientY >= zoneRect.top &&
-          touch.clientY <= zoneRect.bottom;
-
-        if (isOver && !dropped) {
-          zone.classList.remove("drag-over");
-
-          // Dla testów - sprawdź czy test pasuje do story
-          if (
-            touchState.dragging.classList.contains("test-card") &&
-            zone.classList.contains("test-list")
-          ) {
-            const testStoryId = touchState.dragging.dataset.storyId;
-            const targetStoryId = zone.dataset.storyId;
-
-            if (testStoryId === targetStoryId) {
-              // Prawidłowe przypisanie - dodaj wizualną informację
-              touchState.dragging.classList.add("correct-match");
-              setTimeout(() => {
-                touchState.dragging.classList.remove("correct-match");
-              }, 1000);
-            }
-          }
-
-          // Przenieś kartę
-          card.style.position = "relative";
-          card.style.top = "auto";
-          card.style.left = "auto";
-          zone.appendChild(touchState.dragging);
-          dropped = true;
-          updateSprintPoints();
-        }
-      });
-
-      // Jeśli nie porzucono nad strefą, przywróć pozycję
-      if (!dropped) {
-        card.style.position = "relative";
-        card.style.top = "auto";
-        card.style.left = "auto";
-      }
-
-      // Wyczyść stan
-      card.classList.remove("dragging");
-      card.style.zIndex = "auto";
-      droppables.forEach((zone) => zone.classList.remove("drag-over"));
-      touchState.dragging = null;
-      enableTouchScroll();
-    });
-  });
-
-  // Desktop: Drop zones
-  droppables.forEach((zone) => {
+  // --- Desktop: Drag API (bez zmian, tylko lekka ochronna walidacja)
+  desktopDroppables.forEach(zone => {
     zone.addEventListener("dragover", (e) => {
       e.preventDefault();
       zone.classList.add("drag-over");
     });
-    zone.addEventListener("dragleave", () => {
-      zone.classList.remove("drag-over");
-    });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
     zone.addEventListener("drop", (e) => {
       e.preventDefault();
       const dragging = document.querySelector(".card.dragging");
       if (!dragging) return;
       zone.classList.remove("drag-over");
 
-      // Dla testów - sprawdź czy test pasuje do story
-      if (
-        dragging.classList.contains("test-card") &&
-        zone.classList.contains("test-list")
-      ) {
+      // dopasowanie test->story jeśli potrzebne
+      if (dragging.classList.contains("test-card") && zone.classList.contains("test-list")) {
         const testStoryId = dragging.dataset.storyId;
         const targetStoryId = zone.dataset.storyId;
-
         if (testStoryId === targetStoryId) {
-          // Prawidłowe przypisanie - dodaj wizualną informację
           dragging.classList.add("correct-match");
-          setTimeout(() => {
-            dragging.classList.remove("correct-match");
-          }, 1000);
+          setTimeout(() => dragging.classList.remove("correct-match"), 1000);
         }
       }
 
-      // Prosta logika – zawsze można przenieść
       zone.appendChild(dragging);
       updateSprintPoints();
     });
   });
+
+  // --- Mobile + Desktop: przygotowanie kart
+  cards.forEach((card) => {
+    // Desktop events
+    card.addEventListener("dragstart", () => card.classList.add("dragging"));
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      updateSprintPoints();
+    });
+
+    // TOUCH HANDLERS
+    card.addEventListener("touchstart", (e) => {
+      const target = e.target;
+      if (target.tagName === "A" || target.tagName === "BUTTON") return;
+
+      e.preventDefault();
+      touchState.dragging = card;
+
+      // zachowaj rozmiar, offsets
+      const cardRect = card.getBoundingClientRect();
+      touchState.offsetX = e.touches[0].clientX - cardRect.left;
+      touchState.offsetY = e.touches[0].clientY - cardRect.top;
+      touchState.originalWidth = cardRect.width;
+
+      card.classList.add("dragging");
+      // ustaw style do "pływania" nad UI
+      card.style.position = "fixed";
+      card.style.width = `${touchState.originalWidth}px`;
+      card.style.zIndex = "10000";
+      card.style.pointerEvents = "none"; // pozwala elementFromPoint działać pod kartą
+      disableTouchScroll();
+    }, { passive: false });
+
+    card.addEventListener("touchmove", (e) => {
+      if (!touchState.dragging) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const draggingCard = touchState.dragging;
+
+      draggingCard.style.top = touch.clientY - touchState.offsetY + "px";
+      draggingCard.style.left = touch.clientX - touchState.offsetX + "px";
+
+      // sprawdź, nad którą strefą jesteśmy (document.elementFromPoint)
+      const zone = getDropZoneFromPoint(touch.clientX, touch.clientY);
+
+      // zrób "visual feedback" — tylko jedna strefa na raz
+      if (touchState.currentDropZone && touchState.currentDropZone !== zone) {
+        touchState.currentDropZone.classList.remove("drag-over");
+      }
+      if (zone && zone !== touchState.currentDropZone) {
+        zone.classList.add("drag-over");
+      }
+      touchState.currentDropZone = zone;
+    }, { passive: false });
+
+    card.addEventListener("touchend", (e) => {
+      if (!touchState.dragging) return;
+      e.preventDefault();
+
+      const touch = e.changedTouches[0];
+      const draggingCard = touchState.dragging;
+      const dropZone = getDropZoneFromPoint(touch.clientX, touch.clientY);
+
+      if (dropZone) {
+        // jeśli to test->story lista, sprawdź dopasowanie
+        if (draggingCard.classList.contains("test-card") && dropZone.classList.contains("test-list")) {
+          const testStoryId = draggingCard.dataset.storyId;
+          const targetStoryId = dropZone.dataset.storyId;
+          if (testStoryId === targetStoryId) {
+            draggingCard.classList.add("correct-match");
+            setTimeout(() => draggingCard.classList.remove("correct-match"), 1000);
+          } else {
+            // jeżeli nie pasuje, możesz dodać klasę .wrong-pair albo animację
+            dropZone.classList.add("wrong-pair");
+            setTimeout(() => dropZone.classList.remove("wrong-pair"), 600);
+          }
+        }
+
+        // przenieś element do strefy
+        dropZone.appendChild(draggingCard);
+
+        // po append usuń style powodujące "pływanie"
+        draggingCard.style.position = "relative";
+        draggingCard.style.top = "auto";
+        draggingCard.style.left = "auto";
+        draggingCard.style.width = "auto";
+        draggingCard.style.zIndex = "auto";
+        draggingCard.style.pointerEvents = "auto";
+      } else {
+        // jeśli nie upuszczono nad strefą, przywróć do pierwotnego miejsca: po prostu usuń style
+        draggingCard.style.position = "relative";
+        draggingCard.style.top = "auto";
+        draggingCard.style.left = "auto";
+        draggingCard.style.width = "auto";
+        draggingCard.style.zIndex = "auto";
+        draggingCard.style.pointerEvents = "auto";
+      }
+
+      // cleanup
+      if (touchState.currentDropZone) {
+        touchState.currentDropZone.classList.remove("drag-over");
+        touchState.currentDropZone = null;
+      }
+      touchState.dragging = null;
+
+      updateSprintPoints();
+      enableTouchScroll();
+    }, { passive: false });
+  });
 }
+
 
 // Przejścia między pokojami
 function goToRoom(key) {
@@ -1281,7 +1296,7 @@ async function saveScore(teamName, score, time, mode) {
     });
 
     console.log(
-      `📊 Odpowiedź serwera: status ${response.status}, ok=${response.ok}`
+      `📊 Odpowiedź serwera: status ${response.status}, ok=${response.ok}`,
     );
 
     if (!response.ok) {
@@ -1402,8 +1417,8 @@ async function showRanking() {
         entry.mode === "multiplayer"
           ? "Multiplayer"
           : entry.mode === "versus"
-          ? "Versus"
-          : "Solo";
+            ? "Versus"
+            : "Solo";
 
       tr.innerHTML = `
         <td>${index + 1}</td>
@@ -1427,15 +1442,14 @@ function initMultiplayer() {
   // Sprawdź, czy Socket.io jest dostępny
   if (typeof io === "undefined") {
     $("#multiplayer-status-text").textContent =
-      "Socket.io nie jest załadowany. Upewnij się, że otwierasz grę przez serwer (http://localhost:3001), a nie bezpośrednio plik HTML.";
+      "Socket.io nie jest załadowany.";
     $("#multiplayer-status").style.borderColor = "#fb7185";
     return;
   }
 
   // Sprawdź, czy otwieramy przez serwer (nie file://)
   if (window.location.protocol === "file:") {
-    $("#multiplayer-status-text").textContent =
-      "Multiplayer wymaga serwera. Uruchom: npm start, a następnie otwórz http://localhost:3001";
+    $("#multiplayer-status-text").textContent = "Multiplayer wymaga serwera.";
     $("#multiplayer-status").style.borderColor = "#fb7185";
     return;
   }
@@ -1684,7 +1698,7 @@ if ("ontouchstart" in window) {
       if (
         e.target.tagName === "BUTTON" ||
         e.target.tagName === "INPUT" ||
-        e.target.tagName === "SELECT" ||
+       
         e.target.classList.contains("quiz-option") ||
         e.target.classList.contains("card")
       ) {
@@ -1692,7 +1706,7 @@ if ("ontouchstart" in window) {
         e.target.click?.();
       }
     },
-    false
+    false,
   );
 }
 
