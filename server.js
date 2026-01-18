@@ -16,33 +16,30 @@ app.use(express.json());
 // Konfiguracja połączenia z MySQL
 // Конфігурація під Railway
 const dbConfig = {
-  host: process.env.MYSQLHOST || "127.0.0.1",
-  user: process.env.MYSQLUSER || "root",
-  password: process.env.MYSQLPASSWORD || "",
-  database: process.env.MYSQLDATABASE || "escape_room_game",
-  port: parseInt(process.env.MYSQLPORT) || 3306,
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: Number(process.env.MYSQLPORT),
+
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 };
 
-// Konfiguracja bez bazy danych (do inicjalizacji)
-const dbConfigNoDB = {
-  host: process.env.DB_HOST || "127.0.0.1",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-};
 
-// Jeśli DB_SOCKET jest ustawiony (np. dla MAMP), użyj socket'a zamiast TCP
-if (process.env.DB_SOCKET) {
-  dbConfig.socketPath = process.env.DB_SOCKET;
-  delete dbConfig.host; // Usuń host gdy używamy socket'a
-  dbConfigNoDB.socketPath = process.env.DB_SOCKET;
-  delete dbConfigNoDB.host;
-}
+
+console.log({
+  host: process.env.MYSQLHOST,
+  port: process.env.MYSQLPORT,
+  user: process.env.MYSQLUSER,
+  database: process.env.MYSQLDATABASE,
+});
+
+
 
 // Utwórz pulę połączeń
 const pool = mysql.createPool(dbConfig);
