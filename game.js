@@ -802,7 +802,7 @@ function buildTests() {
           : "#a855f7";
 
     li.innerHTML = `
-      <div class="card-title">${test.text}pole</div>
+      <div class="card-title">${test.text}</div>
       <div class="card-meta">
         <span class="test-type-pill" style="background: ${typeColor}">${typeLabel}</span>
       </div>
