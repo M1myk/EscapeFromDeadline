@@ -802,7 +802,7 @@ function buildTests() {
           : "#a855f7";
 
     li.innerHTML = `
-      <div class="card-title">${test.text}</div>
+      <div class="card-title">${test.text}pole</div>
       <div class="card-meta">
         <span class="test-type-pill" style="background: ${typeColor}">${typeLabel}</span>
       </div>
@@ -1006,7 +1006,22 @@ function initDragAndDrop() {
         }
       }
 
+      // Append and reset styles so the card fits inside the target block
       zone.appendChild(dragging);
+      // Clear any positioning that may have been applied by touch handlers
+      try {
+        dragging.style.position = "relative";
+        dragging.style.top = "auto";
+        dragging.style.left = "auto";
+        dragging.style.width = "auto";
+        dragging.style.maxWidth = "100%";
+        dragging.style.zIndex = "auto";
+        dragging.style.pointerEvents = "auto";
+      } catch (e) {
+        // ignore if element doesn't support style changes
+      }
+      // Ensure dragging visual state is cleared
+      dragging.classList.remove("dragging");
       updateSprintPoints();
     });
   });
