@@ -945,6 +945,8 @@ let touchState = {
   dragging: null,
   offsetX: 0,
   offsetY: 0,
+  currentDropZone: null,
+  scrollInterval: null,
 };
 
 function disableTouchScroll() {
@@ -959,7 +961,10 @@ function enableTouchScroll() {
 
 function preventScroll(e) {
   if (touchState.dragging) {
-    e.preventDefault();
+    const container = document.getElementById("tests-stories-container");
+    if (!container || !container.contains(e.target)) {
+      e.preventDefault();
+    }
   }
 }
 
@@ -1015,6 +1020,8 @@ function initDragAndDrop() {
       updateSprintPoints();
     });
 
+    
+
     // TOUCH HANDLERS
     card.addEventListener("touchstart", (e) => {
       const target = e.target;
@@ -1059,11 +1066,44 @@ function initDragAndDrop() {
         zone.classList.add("drag-over");
       }
       touchState.currentDropZone = zone;
+
+      // Auto-scroll the container when dragging near edges
+      const container = document.getElementById("tests-stories-container");
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const scrollThreshold = 80;
+        const scrollSpeed = 8;
+
+        // Clear existing scroll interval
+        if (touchState.scrollInterval) {
+          clearInterval(touchState.scrollInterval);
+          touchState.scrollInterval = null;
+        }
+
+        // Scroll down if dragging near bottom
+        if (touch.clientY > containerRect.bottom - scrollThreshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+          touchState.scrollInterval = setInterval(() => {
+            container.scrollTop += scrollSpeed;
+          }, 16);
+        }
+        // Scroll up if dragging near top
+        else if (touch.clientY < containerRect.top + scrollThreshold && container.scrollTop > 0) {
+          touchState.scrollInterval = setInterval(() => {
+            container.scrollTop -= scrollSpeed;
+          }, 16);
+        }
+      }
     }, { passive: false });
 
     card.addEventListener("touchend", (e) => {
       if (!touchState.dragging) return;
       e.preventDefault();
+
+      // Stop auto-scroll
+      if (touchState.scrollInterval) {
+        clearInterval(touchState.scrollInterval);
+        touchState.scrollInterval = null;
+      }
 
       const touch = e.changedTouches[0];
       const draggingCard = touchState.dragging;
